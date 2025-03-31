@@ -83,7 +83,5 @@ pipeline {
                 sh "trivy image --format table -o trivy-image-report.html ${DOCKER_IMAGE}"
             }
         }
-    
-
-     
+    }     
 }
