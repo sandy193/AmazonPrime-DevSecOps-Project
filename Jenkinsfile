@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        DOCKER_IMAGE = "sriraju12/amazon-prime-app:${BUILD_NUMBER}"
+        DOCKER_IMAGE = "sandydocker19/amazon-prime-app:${BUILD_NUMBER}"
     }
 
     stages {
@@ -22,14 +22,14 @@ pipeline {
 
         stage('Git Code Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/sriraju12/AmazonPrime-DevSecOps-Project.git'
+                git branch: 'main', url: 'https://github.com/sandy193/AmazonPrime-DevSecOps-Project.git'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    withSonarQubeEnv('sonar-server') {
+                    withSonarQubeEnv('sonar-secret') {
                         sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Amazon-Prime \
                         -Dsonar.projectKey=Amazon-prime '''
                     }
@@ -39,7 +39,7 @@ pipeline {
 
        stage('Quality Gate Check') {
             steps {
-                waitForQualityGate abortPipeline: false, credentialsId: 'jenkins-sonar-token'
+                waitForQualityGate abortPipeline: false, credentialsId: 'sonar-secret'
             }
         }
 
@@ -58,20 +58,20 @@ pipeline {
 
         stage('Trivy Scan For File System') {
             steps {
-                sh "/opt/homebrew/bin/trivy fs --format table -o trivy-files-report.html ."
+                sh "trivy fs --format table -o trivy-files-report.html ."
             }
         }
 
         stage('Build and Push Docker Image') {
           environment {
-             REGISTRY_CREDENTIALS = credentials('dockerhub-token')
+             REGISTRY_CREDENTIALS = credentials('dockerhub-secret')
             }
           steps {
             script {
               sh 'docker context use default'  
               sh "docker build -t ${DOCKER_IMAGE} ."
               def dockerImage = docker.image("${DOCKER_IMAGE}")
-              docker.withRegistry('https://index.docker.io/v1/', "dockerhub-token") {
+              docker.withRegistry('https://index.docker.io/v1/', "dockerhub-secret") {
                   dockerImage.push()
                 }
             }
@@ -80,20 +80,10 @@ pipeline {
 
         stage('Scan Docker Image') {
             steps {
-                sh "/opt/homebrew/bin/trivy image --format table -o trivy-image-report.html ${DOCKER_IMAGE}"
+                sh "trivy image --format table -o trivy-image-report.html ${DOCKER_IMAGE}"
             }
         }
     }
 
-    post {
-     always {
-        emailext attachLog: true,
-            subject: "'${currentBuild.result}'",
-            body: "Project: ${env.JOB_NAME}<br/>" +
-                "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                "URL: ${env.BUILD_URL}<br/>",
-            to: 'rajukrishnamsetty9@gmail.com',                                
-            attachmentsPattern: 'trivy-files-report.html,trivy-image-report.html'
-        }
     }   
 }
