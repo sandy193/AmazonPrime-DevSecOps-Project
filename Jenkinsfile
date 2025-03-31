@@ -29,7 +29,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    withSonarQubeEnv('sonar-secret') {
+                    withSonarQubeEnv('sonar-server') {
                         sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Amazon-Prime \
                         -Dsonar.projectKey=Amazon-prime '''
                     }
